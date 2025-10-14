@@ -13,7 +13,7 @@ do.cleanuponabort=0
 device.name1=moonstone
 device.name2=stone
 device.name3=sunstone
-supported.versions=12.0-15.0
+supported.versions=15.0-16.0
 supported.patchlevels=
 '; } # end properties
 

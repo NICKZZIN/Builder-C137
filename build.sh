@@ -24,6 +24,40 @@ read KernelSU
 
 if [ "$KernelSU" = "y" ]; then
     echo "Build KernelSU Selected"
+    
+    # Clone KernelSU next branch
+    if [ ! -d "$PWD/KernelSU" ]; then
+        echo "Cloning KernelSU (next branch)..."
+        git clone https://github.com/tiann/KernelSU.git -b next --depth=1
+    else
+        echo "KernelSU directory already exists. Pulling latest changes..."
+        cd KernelSU
+        git pull
+        cd ..
+    fi
+    
+    # Ask about SusFS
+    echo "Do you want to include SusFS? (y / n)"
+    read SusFS
+    
+    if [ "$SusFS" = "y" ]; then
+        echo "SusFS Selected"
+        
+        # Clone SusFS
+        if [ ! -d "$PWD/KernelSU/kernel/sufs" ]; then
+            echo "Cloning SusFS..."
+            git clone https://gitlab.com/simonpunk/susfs4ksu.git $PWD/KernelSU/kernel/sufs
+        else
+            echo "SusFS directory already exists. Pulling latest changes..."
+            cd $PWD/KernelSU/kernel/sufs
+            git pull
+            cd $PWD
+        fi
+        
+        echo "✅ SusFS cloned and ready for compilation!"
+    else
+        echo "Build without SusFS"
+    fi
 else
     echo "Build Non KernelSU Selected"
 fi
@@ -36,7 +70,11 @@ KERNEL_DEFCONFIG="${DEVICE_CODENAME}_defconfig"
 ANYKERNEL3_DIR=$PWD/AnyKernel3/
 
 if [ "$KernelSU" = "y" ]; then
-    FINAL_KERNEL_ZIP="${KERNEL_NAME}-Kernel-KSU-${DEVICE_CODENAME}-$(date '+%Y%m%d').zip"
+    if [ "$SusFS" = "y" ]; then
+        FINAL_KERNEL_ZIP="${KERNEL_NAME}-Kernel-KSU-SusFS-${DEVICE_CODENAME}-$(date '+%Y%m%d').zip"
+    else
+        FINAL_KERNEL_ZIP="${KERNEL_NAME}-Kernel-KSU-${DEVICE_CODENAME}-$(date '+%Y%m%d').zip"
+    fi
 else
     FINAL_KERNEL_ZIP="${KERNEL_NAME}-Kernel-${DEVICE_CODENAME}-$(date '+%Y%m%d').zip"
 fi
@@ -86,11 +124,21 @@ fi
 
 # Start Build Process
 BUILD_START=$(date +"%s")
+
+if [ "$KernelSU" = "y" ] && [ "$SusFS" = "y" ]; then
+    BUILD_TYPE="KernelSU \+ SusFS"
+elif [ "$KernelSU" = "y" ]; then
+    BUILD_TYPE="KernelSU"
+else
+    BUILD_TYPE="Stock"
+fi
+
 send_message "🔥 *${KERNEL_NAME} Kernel Build Started\!*
 📱 *Device:* \`${DEVICE_NAME} (${DEVICE_CODENAME})\`
 🖥 *Building on:* \`$(hostname)\`
 ⚙️ *Compiler:* \`${COMPILER_NAME}\`
-🔰 *Build Status:*   \`${BUILD_STATUS}\`"
+🔰 *Build Status:* \`${BUILD_STATUS}\`
+🛠 *Build Type:* \`${BUILD_TYPE}\`"
 
 # Clean previous builds
 make O=out clean
@@ -117,7 +165,7 @@ fi
 
 send_message "✅ *${KERNEL_NAME} Kernel built successfully\!* Zipping files..."
 
-# Move files to AnyKernel3 )
+# Move files to AnyKernel3
 rm -rf $ANYKERNEL3_DIR/Image $ANYKERNEL3_DIR/dtbo.img $ANYKERNEL3_DIR/dtb
 cp $PWD/out/arch/arm64/boot/Image $ANYKERNEL3_DIR/
 cp $PWD/out/arch/arm64/boot/dtbo.img $ANYKERNEL3_DIR/
@@ -129,13 +177,17 @@ zip -r9 "../$FINAL_KERNEL_ZIP" * -x README $FINAL_KERNEL_ZIP
 
 # Upload Kernel to Telegram
 send_message "📤 Uploading ${KERNEL_NAME} Kernel zip..."
+
+BUILD_CAPTION="✅ *${KERNEL_NAME} Kernel for ${DEVICE_CODENAME} ${DEVICE_NAME}*
+🖥️ *Built on:* \`${BUILD_HOSTNAME}\`
+⚙️ *Compiler:* \`${COMPILER_NAME}\`
+🔰 *Build Status:* \`${BUILD_STATUS}\`
+🛠 *Build Type:* \`${BUILD_TYPE}\`"
+
 curl -F chat_id="$CHAT_ID" \
      -F document=@"../$FINAL_KERNEL_ZIP" \
      -F parse_mode="MarkdownV2" \
-     -F caption="✅ *${KERNEL_NAME} Kernel for ${DEVICE_CODENAME} ${DEVICE_NAME}*
-🖥️ *Built on:* \`${BUILD_HOSTNAME}\`
-⚙️ *Compiler:* \`${COMPILER_NAME}\`
-🔰 *Build Status:* \`${BUILD_STATUS}\`" \
+     -F caption="$BUILD_CAPTION" \
      "https://api.telegram.org/bot$BOT_TOKEN/sendDocument"
 
 BUILD_END=$(date +"%s")
@@ -148,4 +200,3 @@ rm -rf out/
 rm -rf $ANYKERNEL3_DIR/Image $ANYKERNEL3_DIR/dtbo.img $ANYKERNEL3_DIR/dtb
 
 exit 0
-
