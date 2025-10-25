@@ -23,18 +23,18 @@ echo "Do you want to include KernelSU? (y / n)"
 read KernelSU
 
 if [ "$KernelSU" = "y" ]; then
-    echo "Build KernelSU Selected"
+    echo "Build KernelSU-Next Selected"
     
-    # Clone KernelSU next branch
-    if [ ! -d "$PWD/KernelSU" ]; then
-        echo "Cloning KernelSU (next branch)..."
-        git clone https://github.com/tiann/KernelSU.git -b next --depth=1
-    else
-        echo "KernelSU directory already exists. Pulling latest changes..."
-        cd KernelSU
-        git pull
-        cd ..
+    # Setup KernelSU-Next using official setup script
+    echo "Setting up KernelSU-Next..."
+    curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -
+    
+    if [ $? -ne 0 ]; then
+        echo "❌ Failed to setup KernelSU-Next!"
+        exit 1
     fi
+    
+    echo "✅ KernelSU-Next setup completed!"
     
     # Ask about SusFS
     echo "Do you want to include SusFS? (y / n)"
@@ -46,7 +46,12 @@ if [ "$KernelSU" = "y" ]; then
         # Clone SusFS
         if [ ! -d "$PWD/KernelSU/kernel/sufs" ]; then
             echo "Cloning SusFS..."
-            git clone https://gitlab.com/simonpunk/susfs4ksu.git $PWD/KernelSU/kernel/sufs
+            git clone https://gitlab.com/simonpunk/susfs4ksu.git $PWD/KernelSU/kernel/sufs --depth=1
+            
+            if [ $? -ne 0 ]; then
+                echo "❌ Failed to clone SusFS!"
+                exit 1
+            fi
         else
             echo "SusFS directory already exists. Pulling latest changes..."
             cd $PWD/KernelSU/kernel/sufs
@@ -55,6 +60,15 @@ if [ "$KernelSU" = "y" ]; then
         fi
         
         echo "✅ SusFS cloned and ready for compilation!"
+        echo ""
+        echo "⚠️  IMPORTANT: You need to manually enable SusFS in your kernel configuration!"
+        echo "   Add the following to your defconfig or modify .config:"
+        echo "   CONFIG_KSU_SUSFS=y"
+        echo "   CONFIG_KSU_SUSFS_SUS_PATH=y"
+        echo "   CONFIG_KSU_SUSFS_SUS_MOUNT=y"
+        echo "   CONFIG_KSU_SUSFS_SUS_KSTAT=y"
+        echo "   CONFIG_KSU_SUSFS_SUS_OVERLAYFS=y"
+        echo ""
     else
         echo "Build without SusFS"
     fi
@@ -71,9 +85,9 @@ ANYKERNEL3_DIR=$PWD/AnyKernel3/
 
 if [ "$KernelSU" = "y" ]; then
     if [ "$SusFS" = "y" ]; then
-        FINAL_KERNEL_ZIP="${KERNEL_NAME}-Kernel-KSU-SusFS-${DEVICE_CODENAME}-$(date '+%Y%m%d').zip"
+        FINAL_KERNEL_ZIP="${KERNEL_NAME}-Kernel-KSU-Next-SusFS-${DEVICE_CODENAME}-$(date '+%Y%m%d').zip"
     else
-        FINAL_KERNEL_ZIP="${KERNEL_NAME}-Kernel-KSU-${DEVICE_CODENAME}-$(date '+%Y%m%d').zip"
+        FINAL_KERNEL_ZIP="${KERNEL_NAME}-Kernel-KSU-Next-${DEVICE_CODENAME}-$(date '+%Y%m%d').zip"
     fi
 else
     FINAL_KERNEL_ZIP="${KERNEL_NAME}-Kernel-${DEVICE_CODENAME}-$(date '+%Y%m%d').zip"
@@ -126,9 +140,9 @@ fi
 BUILD_START=$(date +"%s")
 
 if [ "$KernelSU" = "y" ] && [ "$SusFS" = "y" ]; then
-    BUILD_TYPE="KernelSU \+ SusFS"
+    BUILD_TYPE="KernelSU-Next \+ SusFS"
 elif [ "$KernelSU" = "y" ]; then
-    BUILD_TYPE="KernelSU"
+    BUILD_TYPE="KernelSU-Next"
 else
     BUILD_TYPE="Stock"
 fi
