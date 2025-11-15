@@ -2,7 +2,7 @@
 
 #
 # This Bash script automates the process of building a custom kernel for any device using Clang.
-# It packages the compiled kernel with AnyKernel3 and sends real-time updates via Telegram.
+# It packages the compiled kernel with AnyKernel3.
 # USAGE : ./build.sh or bash build.sh
 #
 # Copyright (C) 2025 Amrita Das <bhabanidas431@gmail.com>
@@ -25,11 +25,15 @@ read KernelSU
 if [ "$KernelSU" = "y" ]; then
     echo "Build KernelSU-Next Selected"
     
+    # Remove old KernelSU if exists to avoid conflicts
+    if [ -d "$PWD/KernelSU" ]; then
+        echo "Removing old KernelSU directory..."
+        rm -rf $PWD/KernelSU
+    fi
+    
     # Setup KernelSU-Next using official setup script
     echo "Setting up KernelSU-Next..."
-    curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -
-    
-    if [ $? -ne 0 ]; then
+    if ! curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -s main; then
         echo "❌ Failed to setup KernelSU-Next!"
         exit 1
     fi
@@ -37,48 +41,111 @@ if [ "$KernelSU" = "y" ]; then
     echo "✅ KernelSU-Next setup completed!"
     
     # Ask about SusFS
+    echo ""
     echo "Do you want to include SusFS? (y / n)"
     read SusFS
     
     if [ "$SusFS" = "y" ]; then
         echo "SusFS Selected"
         
-        # Clone SusFS
-        if [ ! -d "$PWD/KernelSU/kernel/sufs" ]; then
-            echo "Cloning SusFS..."
-            git clone https://gitlab.com/simonpunk/susfs4ksu.git $PWD/KernelSU/kernel/sufs --depth=1
-            
-            if [ $? -ne 0 ]; then
-                echo "❌ Failed to clone SusFS!"
-                exit 1
-            fi
-        else
-            echo "SusFS directory already exists. Pulling latest changes..."
-            cd $PWD/KernelSU/kernel/sufs
-            git pull
-            cd $PWD
+        # Ensure KernelSU directory exists
+        if [ ! -d "$PWD/KernelSU" ]; then
+            echo "❌ KernelSU directory not found! Cannot install SusFS."
+            exit 1
         fi
         
-        echo "✅ SusFS cloned and ready for compilation!"
+        # Remove old SusFS if exists
+        if [ -d "$PWD/KernelSU/kernel/sufs" ]; then
+            echo "Removing old SusFS directory..."
+            rm -rf $PWD/KernelSU/kernel/sufs
+        fi
+        
+        # Clone SusFS
+        echo "Cloning SusFS..."
+        if ! git clone https://gitlab.com/simonpunk/susfs4ksu.git $PWD/KernelSU/kernel/sufs --depth=1; then
+            echo "❌ Failed to clone SusFS!"
+            exit 1
+        fi
+        
+        echo "✅ SusFS cloned successfully!"
         echo ""
-        echo "⚠️  IMPORTANT: You need to manually enable SusFS in your kernel configuration!"
-        echo "   Add the following to your defconfig or modify .config:"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "⚠️  CRITICAL: Manual configuration required!"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo "1. Add to your defconfig (arch/arm64/configs/${DEVICE_CODENAME}_defconfig):"
+        echo ""
+        echo "   # KernelSU-Next"
+        echo "   CONFIG_KPROBES=y"
+        echo "   CONFIG_HAVE_KPROBES=y"
+        echo "   CONFIG_KPROBE_EVENTS=y"
+        echo "   CONFIG_MODULES=y"
+        echo "   CONFIG_MODULE_UNLOAD=y"
+        echo ""
+        echo "   # SusFS for KernelSU"
         echo "   CONFIG_KSU_SUSFS=y"
         echo "   CONFIG_KSU_SUSFS_SUS_PATH=y"
         echo "   CONFIG_KSU_SUSFS_SUS_MOUNT=y"
         echo "   CONFIG_KSU_SUSFS_SUS_KSTAT=y"
         echo "   CONFIG_KSU_SUSFS_SUS_OVERLAYFS=y"
+        echo "   CONFIG_KSU_SUSFS_OPEN_REDIRECT=y"
+        echo "   CONFIG_KSU_SUSFS_SUS_SU=y"
         echo ""
+        echo "2. Or modify your kernel Makefile to include KernelSU automatically:"
+        echo ""
+        echo "   Add before 'all:' target:"
+        echo "   -include \$(srctree)/KernelSU/kernel/Makefile.ext"
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo "Press ENTER to continue with the build..."
+        read
     else
         echo "Build without SusFS"
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "⚠️  Manual configuration required for KernelSU-Next!"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo "Add to your defconfig (arch/arm64/configs/${DEVICE_CODENAME}_defconfig):"
+        echo ""
+        echo "   CONFIG_KPROBES=y"
+        echo "   CONFIG_HAVE_KPROBES=y"
+        echo "   CONFIG_KPROBE_EVENTS=y"
+        echo "   CONFIG_MODULES=y"
+        echo "   CONFIG_MODULE_UNLOAD=y"
+        echo ""
+        echo "Or add to your kernel Makefile before 'all:' target:"
+        echo "   -include \$(srctree)/KernelSU/kernel/Makefile.ext"
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo "Press ENTER to continue with the build..."
+        read
+    fi
+    
+    # Verify KernelSU directory structure
+    echo ""
+    echo "Verifying KernelSU-Next installation..."
+    if [ -d "$PWD/KernelSU/kernel" ]; then
+        echo "✅ KernelSU/kernel directory found"
+        if [ "$SusFS" = "y" ] && [ -d "$PWD/KernelSU/kernel/sufs" ]; then
+            echo "✅ SusFS directory found"
+        fi
+        echo "✅ KernelSU-Next is ready!"
+    else
+        echo "❌ KernelSU installation incomplete!"
+        exit 1
     fi
 else
     echo "Build Non KernelSU Selected"
 fi
 
+echo ""
+
 # Set Kernel Build Variables
 DEVICE_CODENAME="stone"  # Device codename (e.g., veux, garnet, etc.)
-DEVICE_NAME="POCO X5 5G/Redmi Note 12 5G/Note 12R Pro"          # Device Market name (e.g., POCO X4 PRO 5G)
+DEVICE_NAME="POCO X5 5G/Redmi Note 12 5G/Note 12R Pro"          # Device Market name
 KERNEL_NAME="Eclipse"    # Kernel name
 KERNEL_DEFCONFIG="${DEVICE_CODENAME}_defconfig"
 ANYKERNEL3_DIR=$PWD/AnyKernel3/
@@ -115,23 +182,11 @@ export KBUILD_BUILD_HOST=$BUILD_HOSTNAME
 export KBUILD_BUILD_USER="Julival"
 export KBUILD_COMPILER_STRING="$COMPILER_NAME"
 
-# Telegram Bot Config
-BOT_TOKEN="put telegram bot token"
-CHAT_ID="put telegram channel/chat id"
-
-# Function to send Telegram message
-send_message() {
-    curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
-         -d "chat_id=${CHAT_ID}" \
-         -d "parse_mode=MarkdownV2" \
-         -d "text=$1"
-}
-
 # Clone Clang if not found
 if ! [ -d "$HOME/clang-r547379" ]; then
-    send_message "⚙️ Clang not found! Cloning..."
+    echo "⚙️ Clang not found! Cloning..."
     if ! git clone -q https://gitlab.com/crdroidandroid/android_prebuilts_clang_host_linux-x86_clang-r547379.git -b 15.0 --depth=1 --single-branch ~/clang-r547379; then
-        send_message "❌ Cloning failed! Aborting..."
+        echo "❌ Cloning failed! Aborting..."
         exit 1
     fi
 fi
@@ -140,27 +195,65 @@ fi
 BUILD_START=$(date +"%s")
 
 if [ "$KernelSU" = "y" ] && [ "$SusFS" = "y" ]; then
-    BUILD_TYPE="KernelSU-Next \+ SusFS"
+    BUILD_TYPE="KernelSU-Next + SusFS"
 elif [ "$KernelSU" = "y" ]; then
     BUILD_TYPE="KernelSU-Next"
 else
     BUILD_TYPE="Stock"
 fi
 
-send_message "🔥 *${KERNEL_NAME} Kernel Build Started\!*
-📱 *Device:* \`${DEVICE_NAME} (${DEVICE_CODENAME})\`
-🖥 *Building on:* \`$(hostname)\`
-⚙️ *Compiler:* \`${COMPILER_NAME}\`
-🔰 *Build Status:* \`${BUILD_STATUS}\`
-🛠 *Build Type:* \`${BUILD_TYPE}\`"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🔥 ${KERNEL_NAME} Kernel Build Started!"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📱 Device: ${DEVICE_NAME} (${DEVICE_CODENAME})"
+echo "🖥️ Building on: $(hostname)"
+echo "⚙️ Compiler: ${COMPILER_NAME}"
+echo "🔰 Build Status: ${BUILD_STATUS}"
+echo "🛠️ Build Type: ${BUILD_TYPE}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
 
 # Clean previous builds
+echo "🧹 Cleaning previous builds..."
 make O=out clean
 
 # Set Defconfig
+echo "⚙️ Setting up defconfig..."
 make $KERNEL_DEFCONFIG O=out
 
+# Enable KernelSU configurations if selected
+if [ "$KernelSU" = "y" ]; then
+    echo "🔧 Enabling KernelSU configurations in .config..."
+    scripts/config --file out/.config \
+        -e KPROBES \
+        -e HAVE_KPROBES \
+        -e KPROBE_EVENTS \
+        -e MODULES \
+        -e MODULE_UNLOAD
+    
+    if [ "$SusFS" = "y" ]; then
+        echo "🔧 Enabling SusFS configurations in .config..."
+        scripts/config --file out/.config \
+            -e KSU_SUSFS \
+            -e KSU_SUSFS_SUS_PATH \
+            -e KSU_SUSFS_SUS_MOUNT \
+            -e KSU_SUSFS_SUS_KSTAT \
+            -e KSU_SUSFS_SUS_OVERLAYFS \
+            -e KSU_SUSFS_OPEN_REDIRECT \
+            -e KSU_SUSFS_SUS_SU
+    fi
+    
+    # Regenerate .config
+    echo "🔄 Regenerating .config..."
+    make O=out olddefconfig
+fi
+
 # Compile Kernel
+echo ""
+echo "🔨 Starting kernel compilation..."
+echo ""
+
 make -j$(nproc) O=out \
                 ARCH=arm64 \
                 CC=clang \
@@ -173,11 +266,13 @@ make -j$(nproc) O=out \
 
 # Check for compiled files
 if [ ! -f "$PWD/out/arch/arm64/boot/Image" ]; then
-    send_message "❌ Build failed! Image not found."
+    echo ""
+    echo "❌ Build failed! Image not found."
     exit 1
 fi
 
-send_message "✅ *${KERNEL_NAME} Kernel built successfully\!* Zipping files..."
+echo ""
+echo "✅ ${KERNEL_NAME} Kernel built successfully! Zipping files..."
 
 # Move files to AnyKernel3
 rm -rf $ANYKERNEL3_DIR/Image $ANYKERNEL3_DIR/dtbo.img $ANYKERNEL3_DIR/dtb
@@ -189,28 +284,23 @@ cp $PWD/out/arch/arm64/boot/dtb.img $ANYKERNEL3_DIR/dtb
 cd $ANYKERNEL3_DIR/
 zip -r9 "../$FINAL_KERNEL_ZIP" * -x README $FINAL_KERNEL_ZIP
 
-# Upload Kernel to Telegram
-send_message "📤 Uploading ${KERNEL_NAME} Kernel zip..."
-
-BUILD_CAPTION="✅ *${KERNEL_NAME} Kernel for ${DEVICE_CODENAME} ${DEVICE_NAME}*
-🖥️ *Built on:* \`${BUILD_HOSTNAME}\`
-⚙️ *Compiler:* \`${COMPILER_NAME}\`
-🔰 *Build Status:* \`${BUILD_STATUS}\`
-🛠 *Build Type:* \`${BUILD_TYPE}\`"
-
-curl -F chat_id="$CHAT_ID" \
-     -F document=@"../$FINAL_KERNEL_ZIP" \
-     -F parse_mode="MarkdownV2" \
-     -F caption="$BUILD_CAPTION" \
-     "https://api.telegram.org/bot$BOT_TOKEN/sendDocument"
-
 BUILD_END=$(date +"%s")
 BUILD_TIME=$((BUILD_END - BUILD_START))
 
-send_message "🚀 ${KERNEL_NAME} Kernel build completed in $(($BUILD_TIME / 60)) min $(($BUILD_TIME % 60)) sec"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "✅ Build Completed Successfully!"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📦 Kernel ZIP: $FINAL_KERNEL_ZIP"
+echo "⏱️ Build time: $(($BUILD_TIME / 60)) min $(($BUILD_TIME % 60)) sec"
+echo "🛠️ Build Type: ${BUILD_TYPE}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
 
 # Clean up
+echo "🧹 Cleaning up..."
 rm -rf out/
 rm -rf $ANYKERNEL3_DIR/Image $ANYKERNEL3_DIR/dtbo.img $ANYKERNEL3_DIR/dtb
 
+echo "✅ All done!"
 exit 0
