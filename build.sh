@@ -72,20 +72,42 @@ if [ "$KernelSU" = "y" ]; then
             rm -rf $KERNELSU_DIR/kernel/sufs
         fi
         
-        # Clone SusFS from backslashxx (compatible with older kernels including 5.4)
-        echo "Cloning SusFS (backslashxx fork - compatible with kernel 5.4) to $KERNELSU_DIR/kernel/sufs..."
-        if ! git clone https://github.com/backslashxx/susfs4ksu.git $KERNELSU_DIR/kernel/sufs --depth=1; then
+        # Clone SusFS from simonpunk kernel-5.4 branch (compatible with kernel 5.4)
+        echo "Cloning SusFS (kernel-5.4 branch - compatible with your kernel) to $KERNELSU_DIR/kernel/sufs..."
+        if ! git clone https://gitlab.com/simonpunk/susfs4ksu.git -b kernel-5.4 $KERNELSU_DIR/kernel/sufs --depth=1; then
             echo "❌ Failed to clone SusFS!"
-            echo "Trying alternative repository..."
-            
-            # Fallback to simonpunk original
-            if ! git clone https://gitlab.com/simonpunk/susfs4ksu.git $KERNELSU_DIR/kernel/sufs --depth=1; then
-                echo "❌ Failed to clone SusFS from both repositories!"
-                exit 1
-            fi
+            exit 1
         fi
         
         echo "✅ SusFS cloned successfully!"
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "⚠️  IMPORTANT: Applying SusFS patches for kernel 5.4"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        
+        # Apply patches automatically
+        echo "📝 Applying KernelSU patch for SusFS..."
+        if [ -f "$KERNELSU_DIR/kernel/sufs/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch" ]; then
+            cd $KERNELSU_DIR
+            if patch -p1 < kernel/sufs/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch; then
+                echo "✅ KernelSU patch applied successfully!"
+            else
+                echo "⚠️ KernelSU patch failed or already applied"
+            fi
+            cd $PWD
+        fi
+        
+        echo ""
+        echo "📝 Applying kernel 5.4 SusFS patches..."
+        if [ -f "$KERNELSU_DIR/kernel/sufs/kernel_patches/50_add_susfs_in_kernel-5.4.patch" ]; then
+            if patch -p1 < $KERNELSU_DIR/kernel/sufs/kernel_patches/50_add_susfs_in_kernel-5.4.patch; then
+                echo "✅ Kernel 5.4 SusFS patch applied successfully!"
+            else
+                echo "⚠️ Kernel patch failed or already applied"
+            fi
+        fi
+        
         echo ""
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo "⚠️  CRITICAL: Manual configuration required!"
@@ -95,16 +117,14 @@ if [ "$KernelSU" = "y" ]; then
         echo ""
         echo "1. Add to your defconfig (arch/arm64/configs/stone_defconfig):"
         echo ""
-        echo "   # KernelSU-Next (Manual Hooks recommended for older kernels)"
+        echo "   # KernelSU-Next"
         echo "   CONFIG_KPROBES=y"
         echo "   CONFIG_HAVE_KPROBES=y"
         echo "   CONFIG_KPROBE_EVENTS=y"
         echo "   CONFIG_MODULES=y"
         echo "   CONFIG_MODULE_UNLOAD=y"
-        echo "   # Use Manual VFS Hooks instead of KPROBES (recommended)"
-        echo "   # CONFIG_KSU_WITH_KPROBES=n"
         echo ""
-        echo "   # SusFS for KernelSU-Next"
+        echo "   # SusFS for KernelSU-Next (Kernel 5.4)"
         echo "   CONFIG_KSU_SUSFS=y"
         echo "   CONFIG_KSU_SUSFS_SUS_PATH=y"
         echo "   CONFIG_KSU_SUSFS_SUS_MOUNT=y"
@@ -113,11 +133,7 @@ if [ "$KernelSU" = "y" ]; then
         echo "   CONFIG_KSU_SUSFS_OPEN_REDIRECT=y"
         echo "   CONFIG_KSU_SUSFS_SUS_SU=y"
         echo ""
-        echo "2. IMPORTANT: Apply manual hooks patches for better compatibility"
-        echo "   The backslashxx fork includes scope-minimized manual hooks"
-        echo "   which work better on kernels 4.x-5.x than KPROBES"
-        echo ""
-        echo "3. Or modify your kernel Makefile to include KernelSU automatically:"
+        echo "2. Or modify your kernel Makefile to include KernelSU automatically:"
         echo ""
         if [ -d "$PWD/KernelSU-Next" ]; then
             echo "   Add before 'all:' target:"
@@ -126,6 +142,9 @@ if [ "$KernelSU" = "y" ]; then
             echo "   Add before 'all:' target:"
             echo "   -include \$(srctree)/KernelSU/kernel/Makefile.ext"
         fi
+        echo ""
+        echo "3. IMPORTANT: Some patches may have failed if files already exist"
+        echo "   Check the output above for any patch errors"
         echo ""
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo ""
