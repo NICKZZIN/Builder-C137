@@ -17,6 +17,9 @@
 # Clone Kernel
 git clone https://github.com/bittencourtjulival/eclipse_kernel_xiaomi_stone -b 16 kernel --depth=1
 
+# Copy AnyKernel to kernel dir.
+cp -r AnyKernel3 kernel/AnyKernel3
+
  # Backup files
  echo "Backup files ..."
  mkdir -p bkp/{drivers,fs,include/linux}
@@ -516,14 +519,21 @@ echo "🧹 Cleaning up..."
 rm -rf out/
 rm -rf $ANYKERNEL3_DIR/Image $ANYKERNEL3_DIR/dtbo.img $ANYKERNEL3_DIR/dtb
 
-# Restore files
-echo "Restoring files...."
+# Return to parent directory before restoring
 cd ..
-cp bkp/drivers/Kconfig kernel/drivers/Kconfig
-cp bkp/drivers/Makefile  kernel/drivers/Makefile
-cp bkp/fs/internal.h  kernel/fs/internal.h
-cp bkp/fs/namespace.c  kernel/fs/namespace.c
-cp  bkp/include/linux/seccomp.h kernel/include/linux/seccomp.h
+
+# Restore files
+echo "Restoring backup files..."
+if [ -d "bkp" ]; then
+    cp bkp/drivers/Kconfig kernel/drivers/Kconfig
+    cp bkp/drivers/Makefile kernel/drivers/Makefile
+    cp bkp/fs/internal.h kernel/fs/internal.h
+    cp bkp/fs/namespace.c kernel/fs/namespace.c
+    cp bkp/include/linux/seccomp.h kernel/include/linux/seccomp.h
+    echo "✅ Backup files restored successfully!"
+else
+    echo "⚠️ Warning: Backup directory not found!"
+fi
 
 echo "✅ All done!"
 echo ""
