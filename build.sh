@@ -56,7 +56,7 @@ if [ "$KernelSU" = "y" ]; then
     if [ "$KSU" = "1" ]; then
  # Setup KernelSU using official setup script
         echo "Setting up KernelSU..."
-        if ! curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s; then
+        if ! curl -LSs "https://raw.githubusercontent.com/bittencourtjulival/KernelSU/master/kernel/setup.sh" | bash -s; then
             echo "❌ Failed to setup KernelSU!"
             exit 1
         fi
