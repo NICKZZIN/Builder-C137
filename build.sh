@@ -537,6 +537,6 @@ fi
 
 echo "✅ All done!"
 echo ""
-echo "Press ENTER to exit..."
-read _
+echo "Press <ENTER>/<RETURN> to exit..."
+read
 exit 0
