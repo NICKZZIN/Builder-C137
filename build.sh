@@ -132,7 +132,7 @@ fi
 echo ""
 
 # Set Kernel Build Variables
-DEVICE_CODENAME="stone"  # Device codename (e.g., veux, garnet, etc.)
+DEVICE_CODENAME="moonstone"  # Device codename (e.g., veux, garnet, etc.)
 DEVICE_NAME="POCO X5 5G/Redmi Note 12 5G/Note 12R Pro"          # Device Market name
 KERNEL_NAME="C137"    # Kernel name
 KERNEL_DEFCONFIG="${DEVICE_CODENAME}_defconfig"
