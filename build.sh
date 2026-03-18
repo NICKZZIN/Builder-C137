@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>.
 # Clone Kernel
-git clone https://github.com/bittencourtjulival/eclipse_kernel_xiaomi_stone -b 16 kernel --depth=1
+git clone https://github.com/NICKZZIN/KERNEL_STONE -b lineage-23.2 kernel --depth=1
 
 # Copy AnyKernel to kernel dir.
 cp -r AnyKernel3 kernel/AnyKernel3
@@ -134,7 +134,7 @@ echo ""
 # Set Kernel Build Variables
 DEVICE_CODENAME="stone"  # Device codename (e.g., veux, garnet, etc.)
 DEVICE_NAME="POCO X5 5G/Redmi Note 12 5G/Note 12R Pro"          # Device Market name
-KERNEL_NAME="Eclipse"    # Kernel name
+KERNEL_NAME="C137"    # Kernel name
 KERNEL_DEFCONFIG="${DEVICE_CODENAME}_defconfig"
 ANYKERNEL3_DIR=$PWD/AnyKernel3/
 
