@@ -6,7 +6,7 @@ on:
 jobs:
   build:
     name: Compilando Kernel C137
-    runs-on: ubuntu-latest # Pega o servidor mais atualizado do GitHub
+    runs-on: ubuntu-20.04 # Pega o servidor mais atualizado do GitHub
 
     steps:
     - name: Baixando o repositório do Builder
