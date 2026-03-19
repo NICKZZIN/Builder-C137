@@ -15,7 +15,7 @@ on:
 jobs:
   build:
     name: Compilando Kernel C137
-    runs-on: ubuntu-20.04 # Versão correta para não dar erro nos pacotes lib32!
+    runs-on: ubuntu-22.04 # Versão correta para não dar erro nos pacotes lib32!
 
     steps:
     - name: Baixando o repositório do Builder
