@@ -2,18 +2,18 @@
 
 #
 # Custom Kernel Builder - NICKZZIN
-# (Otimizado para GitHub Actions)
+# (Otimizado para PC Local - Linux Mint)
 #
 
-# Clona o Kernel
+# Clone Kernel
 echo "Clonando o Kernel..."
 git clone https://github.com/NICKZZIN/KERNEL_STONE -b lineage-23.2 kernel --depth=1
 
-# Copia AnyKernel3
+# Copy AnyKernel to kernel dir.
 cp -r AnyKernel3 kernel/AnyKernel3
 
-# Faz os Backups
-echo "Fazendo backup dos arquivos..."
+# Backup files
+echo "Backup files ..."
 mkdir -p bkp/{drivers,fs,include/linux}
 cp kernel/drivers/Kconfig bkp/drivers/Kconfig 2>/dev/null
 cp kernel/drivers/Makefile bkp/drivers/Makefile 2>/dev/null
@@ -21,65 +21,112 @@ cp kernel/fs/internal.h bkp/fs/internal.h 2>/dev/null
 cp kernel/fs/namespace.c bkp/fs/namespace.c 2>/dev/null
 cp kernel/include/linux/seccomp.h bkp/include/linux/seccomp.h 2>/dev/null
 
+# Move to Kernel Path
 cd kernel
 
-# -----------------------------------------------------------------
-# Lógica Automática lendo a escolha do GitHub Actions (BUILD_TYPE)
-# -----------------------------------------------------------------
-echo "Opção selecionada no painel do GitHub: $BUILD_TYPE"
-
-if [ "$BUILD_TYPE" = "KernelSU Oficial" ]; then
-    KernelSU="y"
-    KSU="1"
-elif [ "$BUILD_TYPE" = "KernelSU Next" ]; then
-    KernelSU="y"
-    KSU="2"
+# Remove old KernelSU-Next/KernelSU directories if exists
+if [ -d "$PWD/KernelSU-Next" ]; then
+      echo "Removing old KernelSU-Next directory..."
+       rm -rf $PWD/KernelSU-Next
+elif [ -d "$PWD/KernelSU" ]; then
+      echo "Removing old KernelSU directory..."
+      rm -rf $PWD/KernelSU
 else
-    KernelSU="n"
+     echo "No Old KernelSU directory found!"
 fi
 
-# Remove diretórios antigos se existirem
-rm -rf $PWD/KernelSU-Next $PWD/KernelSU
+# Read KernelSU.
+echo "Do you want to include KernelSU? (y / n)"
+read KernelSU
 
 if [ "$KernelSU" = "y" ]; then
+    echo "KernelSU or KernelSU Next?? "
+    echo " 1 to KernelSU"
+    echo " 2 to KernelSU Next"
+    read KSU
+    
     if [ "$KSU" = "1" ]; then
-        echo "Configurando KernelSU do Julival..."
+ # Setup KernelSU using official setup script
+        echo "Setting up KernelSU..."
         if ! curl -LSs "https://raw.githubusercontent.com/bittencourtjulival/KernelSU/master/kernel/setup.sh" | bash -s; then
             echo "❌ Failed to setup KernelSU!"
             exit 1
         fi
         echo "✅ KernelSU setup completed!"
-        KERNELSU_DIR="$PWD/KernelSU"
         
     elif [ "$KSU" = "2" ]; then
-        echo "Configurando KernelSU-Next..."
+# Setup KernelSU-Next using official setup script
+        echo "Setting up KernelSU-Next..."
         if ! curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -s; then
             echo "❌ Failed to setup KernelSU-Next!"
             exit 1
         fi
         echo "✅ KernelSU-Next setup completed!"
-        KERNELSU_DIR="$PWD/KernelSU-Next"
+        
+    else
+        echo "❌ Invalid option! Please choose 1 or 2."
+        exit 1
     fi
 
-    # Verificação de segurança (Sem 'read' travando o terminal)
-    echo "Verificando instalação do KernelSU..."
-    if [ -d "$KERNELSU_DIR/kernel" ]; then
-        echo "✅ Diretório $KERNELSU_DIR/kernel encontrado!"
+    # Detect which directory was created (KernelSU or KernelSU-Next)
+    KERNELSU_DIR=""
+    if [ -d "$PWD/KernelSU-Next" ]; then
+        KERNELSU_DIR="$PWD/KernelSU-Next"
+        echo "📁 Using KernelSU-Next directory"
+    elif [ -d "$PWD/KernelSU" ]; then
+        KERNELSU_DIR="$PWD/KernelSU"
+        echo "📁 Using KernelSU directory"
     else
-        echo "❌ Instalação do KernelSU incompleta!"
+        echo "❌ KernelSU directory not found!"
+        exit 1
+    fi
+
+    # Manual configuration info
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "⚠️  Manual configuration required for KernelSU!"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "Add to your defconfig (arch/arm64/configs/${DEVICE_CODENAME}_defconfig):"
+    echo ""
+    echo "   CONFIG_KPROBES=y"
+    echo "   CONFIG_HAVE_KPROBES=y"
+    echo "   CONFIG_KPROBE_EVENTS=y"
+    echo "   CONFIG_MODULES=y"
+    echo "   CONFIG_MODULE_UNLOAD=y"
+    echo ""
+    echo "Or add to your kernel Makefile before 'all:' target:"
+    if [ -d "$PWD/KernelSU-Next" ]; then
+        echo "   -include \$(srctree)/KernelSU-Next/kernel/Makefile.ext"
+    else
+        echo "   -include \$(srctree)/KernelSU/kernel/Makefile.ext"
+    fi
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "Press ENTER to continue with the build..."
+    read
+
+    # Verify KernelSU directory structure
+    echo ""
+    echo "Verifying KernelSU installation..."
+    if [ -d "$KERNELSU_DIR/kernel" ]; then
+        echo "✅ $KERNELSU_DIR/kernel directory found"
+        echo "✅ KernelSU is ready!"
+    else
+        echo "❌ KernelSU installation incomplete!"
         exit 1
     fi
 else
-    echo "✅ Build Non-KSU selecionada (Kernel Stock)."
+    echo "Build Non KernelSU Selected"
 fi
+
 echo ""
 
-# -----------------------------------------------------------------
-# Variáveis de Configuração e Ambiente
-# -----------------------------------------------------------------
-DEVICE_CODENAME="moonstone"
-DEVICE_NAME="POCO X5 5G/Redmi Note 12 5G/Note 12R Pro"
-KERNEL_NAME="C137"
+# Set Kernel Build Variables
+DEVICE_CODENAME="moonstone"  
+DEVICE_NAME="POCO X5 5G/Redmi Note 12 5G/Note 12R Pro"          
+KERNEL_NAME="C137"    
 KERNEL_DEFCONFIG="${DEVICE_CODENAME}_defconfig"
 ANYKERNEL3_DIR=$PWD/AnyKernel3/
 
@@ -94,75 +141,95 @@ else
     FINAL_KERNEL_ZIP="${KERNEL_NAME}-Kernel-${DEVICE_CODENAME}-$(date '+%Y%m%d').zip"
 fi
 
+# Set Build Status
 BUILD_STATUS="STABLE"
 BUILD_HOSTNAME=$(hostname)
 
-# Define o Clang e baixa se não encontrar
+# Set Compiler Path
 COMPILER_PATH="$HOME/clang-r547379/bin"
-if ! [ -d "$HOME/clang-r547379" ]; then
-    echo "⚙️ Clang não encontrado! Clonando..."
-    if ! git clone -q https://gitlab.com/crdroidandroid/android_prebuilts_clang_host_linux-x86_clang-r547379.git -b 15.0 --depth=1 --single-branch ~/clang-r547379; then
-        echo "❌ Falha ao clonar o Clang!"
-        exit 1
-    fi
+
+# Dynamically detect compiler name & version
+if [ -d "$COMPILER_PATH" ]; then
+    export PATH="$COMPILER_PATH:$PATH"
+    COMPILER_NAME="$($COMPILER_PATH/clang --version | head -n 1 | sed -E 's/\(.*\)//' | awk '{$1=$1;print}')"
+else
+    COMPILER_NAME="Unknown Compiler"
 fi
 
-# Detecta versão do compilador e exporta PATHs
-export PATH="$COMPILER_PATH:$PATH"
-COMPILER_NAME="$($COMPILER_PATH/clang --version | head -n 1 | sed -E 's/\(.*\)//' | awk '{$1=$1;print}')"
 export ARCH=arm64
 export KBUILD_BUILD_HOST=$BUILD_HOSTNAME
 export KBUILD_BUILD_USER="NICKZZIN"
 export KBUILD_COMPILER_STRING="$COMPILER_NAME"
 
-# -----------------------------------------------------------------
-# Início do Build
-# -----------------------------------------------------------------
+# Clone Clang if not found
+if ! [ -d "$HOME/clang-r547379" ]; then
+    echo "⚙️ Clang not found! Cloning..."
+    if ! git clone -q https://gitlab.com/crdroidandroid/android_prebuilts_clang_host_linux-x86_clang-r547379.git -b 15.0 --depth=1 --single-branch ~/clang-r547379; then
+        echo "❌ Cloning failed! Aborting..."
+        exit 1
+    fi
+fi
+
+# Start Build Process
 BUILD_START=$(date +"%s")
 
+if [ "$KernelSU" = "y" ]; then
+    if [ "$KSU" = "1" ]; then
+        BUILD_TYPE="KernelSU"
+    else
+        BUILD_TYPE="KernelSU-Next"
+    fi
+else
+    BUILD_TYPE="Stock"
+fi
+
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🔥 Iniciando Build do Kernel ${KERNEL_NAME}!"
+echo "🔥 ${KERNEL_NAME} Kernel Build Started!"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "📱 Dispositivo: ${DEVICE_NAME} (${DEVICE_CODENAME})"
-echo "🖥️ Compilando em: $(hostname)"
-echo "⚙️ Compilador: ${COMPILER_NAME}"
-echo "📰 Status: ${BUILD_STATUS}"
-echo "🛠️ Tipo: ${BUILD_TYPE}"
+echo "📱 Device: ${DEVICE_NAME} (${DEVICE_CODENAME})"
+echo "🖥️ Building on: $(hostname)"
+echo "⚙️ Compiler: ${COMPILER_NAME}"
+echo "📰 Build Status: ${BUILD_STATUS}"
+echo "🛠️ Build Type: ${BUILD_TYPE}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# Limpeza Garantida
-echo "🧹 Limpando o ambiente..."
+# Limpeza Segura (Sem o bug de I/O)
+echo "🧹 Limpando a sujeira e builds anteriores..."
 rm -rf out/
 mkdir -p out/
 
-# Seta o Defconfig
-echo "⚙️ Configurando o defconfig..."
+# Set Defconfig
+echo "⚙️ Setting up defconfig..."
 make $KERNEL_DEFCONFIG O=out
 
-# Habilita opções do KernelSU se selecionado
+# Enable KernelSU configurations if selected
 if [ "$KernelSU" = "y" ]; then
-    echo "🔧 Injetando configs do KSU no .config..."
+    echo "🔧 Enabling KernelSU configurations in .config..."
     scripts/config --file out/.config \
         -e KPROBES \
         -e HAVE_KPROBES \
         -e KPROBE_EVENTS \
         -e MODULES \
         -e MODULE_UNLOAD
+
+    # Regenerate .config
+    echo "🔄 Regenerating .config..."
     make O=out olddefconfig
 fi
 
-# Otimização: Desliga o Debug para voar na compilação
-echo "🚀 Desativando Debug Info para compilar rápido..."
+echo "🚀 Desativando Debug Info para salvar o HD e compilar muito mais rápido..."
 scripts/config --file out/.config -d DEBUG_INFO -d DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT
 make O=out olddefconfig
 
-# Compilação forçada em todos os núcleos
+# Compile Kernel
 echo ""
-echo "🔨 Compilando o Kernel..."
+echo "🔨 Starting kernel compilation..."
 echo ""
-make -j$(nproc) O=out \
+
+# Limitado a 2 núcleos para evitar travamento do HD/Swap
+make -j2 O=out \
                 ARCH=arm64 \
                 CC=clang \
                 CLANG_TRIPLE=aarch64-linux-gnu- \
@@ -173,25 +240,25 @@ make -j$(nproc) O=out \
                 LLVM_IAS=1 \
                 2> error.log
 
-# Validação Final
+# Check for compiled files
 if [ ! -f "$PWD/out/arch/arm64/boot/Image" ]; then
     echo ""
-    echo "❌ A compilação falhou! Arquivo Image não foi gerado."
+    echo "❌ Build failed! Image not found."
     echo "Últimos erros do log (error.log):"
     tail -n 30 error.log
     exit 1
 fi
 
 echo ""
-echo "✅ Kernel ${KERNEL_NAME} gerado com sucesso! Compactando arquivos..."
+echo "✅ ${KERNEL_NAME} Kernel built successfully! Zipping files..."
 
-# Copia pro AnyKernel3
+# Move files to AnyKernel3
 rm -rf $ANYKERNEL3_DIR/Image $ANYKERNEL3_DIR/dtbo.img $ANYKERNEL3_DIR/dtb
 cp $PWD/out/arch/arm64/boot/Image $ANYKERNEL3_DIR/
 cp $PWD/out/arch/arm64/boot/dtbo.img $ANYKERNEL3_DIR/ 2>/dev/null
 cp $PWD/out/arch/arm64/boot/dtb.img $ANYKERNEL3_DIR/dtb 2>/dev/null
 
-# Cria o ZIP
+# Zip Kernel
 cd $ANYKERNEL3_DIR/
 zip -r9 "../$FINAL_KERNEL_ZIP" * -x README $FINAL_KERNEL_ZIP
 
@@ -200,11 +267,18 @@ BUILD_TIME=$((BUILD_END - BUILD_START))
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✅ Workflow Finalizado com Sucesso!"
+echo "✅ Build Completed Successfully!"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "📦 Kernel ZIP: $FINAL_KERNEL_ZIP"
-echo "⏱️ Tempo: $(($BUILD_TIME / 60)) min $(($BUILD_TIME % 60)) seg"
+echo "⏱️ Build time: $(($BUILD_TIME / 60)) min $(($BUILD_TIME % 60)) sec"
+echo "🛠️ Build Type: ${BUILD_TYPE}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
+# Clean up
+echo "🧹 Cleaning up..."
+rm -rf out/
+rm -rf $ANYKERNEL3_DIR/Image $ANYKERNEL3_DIR/dtbo.img $ANYKERNEL3_DIR/dtb
+
+echo "✅ All done!"
 exit 0
