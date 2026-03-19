@@ -237,7 +237,7 @@ echo ""
 echo "🔨 Starting kernel compilation..."
 echo ""
 
-make -j2 O=out \
+make -j$(nproc) O=out \
                 ARCH=arm64 \
                 CC=clang \
                 CLANG_TRIPLE=aarch64-linux-gnu- \
