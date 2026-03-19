@@ -1,12 +1,21 @@
 name: Build C137 Kernel
 
 on:
-  workflow_dispatch: # Isso cria um botão mágico "Run workflow" para você disparar quando quiser
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Escolha a versão do KernelSU'
+        required: true
+        type: choice
+        options:
+          - 'KernelSU Oficial'
+          - 'KernelSU Next'
+          - 'Non-KSU'
 
 jobs:
   build:
     name: Compilando Kernel C137
-    runs-on: ubuntu-20.04 # Pega o servidor mais atualizado do GitHub
+    runs-on: ubuntu-20.04 # Versão correta para não dar erro nos pacotes lib32!
 
     steps:
     - name: Baixando o repositório do Builder
@@ -21,12 +30,12 @@ jobs:
       run: chmod +x build.sh
 
     - name: Iniciando a Compilação
+      env:
+        BUILD_TYPE: ${{ github.event.inputs.build_type }} # Envia a sua escolha para o script
       run: ./build.sh
-      # Aqui o servidor do GitHub vai executar o seu script igualzinho você fazia no terminal
 
     - name: Disponibilizando o ZIP para Download
       uses: actions/upload-artifact@v4
       with:
         name: C137-Kernel-ZIP
         path: AnyKernel3/*.zip
-        # Pega o ZIP que o script gerou na pasta AnyKernel3 e cria o botão de download
