@@ -43,21 +43,21 @@ rm -rf $PWD/KernelSU-Next $PWD/KernelSU
 
 if [ "$KernelSU" = "y" ]; then
     if [ "$KSU" = "1" ]; then
-        echo "Configurando KernelSU Oficial..."
-        if ! curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s; then
-            echo "❌ Falha ao configurar o KernelSU!"
+        echo "Configurando KernelSU do Julival..."
+        if ! curl -LSs "https://raw.githubusercontent.com/bittencourtjulival/KernelSU/master/kernel/setup.sh" | bash -s; then
+            echo "❌ Failed to setup KernelSU!"
             exit 1
         fi
-        echo "✅ KernelSU configurado com sucesso!"
+        echo "✅ KernelSU setup completed!"
         KERNELSU_DIR="$PWD/KernelSU"
         
     elif [ "$KSU" = "2" ]; then
         echo "Configurando KernelSU-Next..."
         if ! curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -s; then
-            echo "❌ Falha ao configurar o KernelSU-Next!"
+            echo "❌ Failed to setup KernelSU-Next!"
             exit 1
         fi
-        echo "✅ KernelSU-Next configurado com sucesso!"
+        echo "✅ KernelSU-Next setup completed!"
         KERNELSU_DIR="$PWD/KernelSU-Next"
     fi
 
@@ -78,7 +78,7 @@ echo ""
 # Variáveis de Configuração e Ambiente
 # -----------------------------------------------------------------
 DEVICE_CODENAME="moonstone"
-DEVICE_NAME="POCO X5 5G / Redmi Note 12 5G"
+DEVICE_NAME="POCO X5 5G/Redmi Note 12 5G/Note 12R Pro"
 KERNEL_NAME="C137"
 KERNEL_DEFCONFIG="${DEVICE_CODENAME}_defconfig"
 ANYKERNEL3_DIR=$PWD/AnyKernel3/
