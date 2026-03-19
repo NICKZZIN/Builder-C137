@@ -5,12 +5,33 @@
 # (Otimizado para PC Local - Linux Mint)
 #
 
-# Clone Kernel
-echo "Clonando o Kernel..."
-git clone https://github.com/NICKZZIN/KERNEL_STONE -b lineage-23.2 kernel --depth=1
+# 🛡️ TRAVA DE SEGURANÇA: Garante que o script sempre rode da pasta base correta!
+cd "$(dirname "$0")" || exit 1
+BUILDER_DIR="$PWD"
+
+# Atualiza ou Clona o Kernel Inteligente
+if [ -d "kernel" ]; then
+    cd kernel
+    
+    # Nova verificação: Garante que é realmente a pasta raiz do código-fonte
+    if [ -f "Android.mk" ] || [ -f "android.mk" ]; then
+        git pull origin lineage-23.2
+    else
+        echo "❌ Erro: Falhou em encontrar a pasta kernel correta!"
+        exit 1
+    fi
+else
+    echo "⬇️ Clonando o Kernel pela primeira vez..."
+    git clone https://github.com/NICKZZIN/KERNEL_STONE -b lineage-23.2 kernel --depth=1
+    cd kernel
+fi
 
 # Copy AnyKernel to kernel dir.
-cp -r AnyKernel3 kernel/AnyKernel3
+cd ..
+
+# Copy AnyKernel to kernel dir
+rm -rf kernel/AnyKernel3
+cp -r AnyKernel3 kernel/
 
 # Backup files
 echo "Backup files ..."
@@ -121,8 +142,6 @@ else
     echo "Build Non KernelSU Selected"
 fi
 
-echo ""
-
 # Set Kernel Build Variables
 DEVICE_CODENAME="stone"  
 DEVICE_NAME="POCO X5 5G/Redmi Note 12 5G/Note 12R Pro"          
@@ -139,6 +158,40 @@ if [ "$KernelSU" = "y" ]; then
     FINAL_KERNEL_ZIP="${KERNEL_NAME}-Kernel-${KSU_TYPE}-${DEVICE_CODENAME}-$(date '+%Y%m%d').zip"
 else
     FINAL_KERNEL_ZIP="${KERNEL_NAME}-Kernel-${DEVICE_CODENAME}-$(date '+%Y%m%d').zip"
+fi
+
+echo ""
+
+# Menu Interativo do SusFS
+echo "Do you want to include SusFS (Hide Root)? (y / n)"
+read IncludeSusFS
+
+if [ "$IncludeSusFS" = "y" ]; then
+    echo "⚙️ Baixando e integrando SusFS (Kernel 5.4)..."
+    
+    # Clona o repositório oficial do susfs na versão correta (Método Completo)
+    git clone https://github.com/infectedmushi/susfs4ksu.git -b kernel-5.4 --depth=1 susfs_tmp
+
+    echo "Aplicando patch no Kernel..."
+    patch -p1 --forward < susfs_tmp/kernel_patches/50_add_susfs_in_kernel-5.4.patch
+
+echo "Copiando arquivos essenciais do SusFS..."
+    cp -r susfs_tmp/kernel_patches/fs/* fs/
+    cp -r susfs_tmp/kernel_patches/include/linux/* include/linux/
+    
+    if [ "$KernelSU" = "y" ]; then
+        echo "Aplicando patch do SusFS no KernelSU..."
+        cp susfs_tmp/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch $KERNELSU_DIR/
+        cd $KERNELSU_DIR
+        patch -p1 --forward < 10_enable_susfs_for_ksu.patch
+        cd ..
+    fi
+
+    echo "Injetando configurações do SusFS no defconfig..."
+    cat susfs_tmp/kernel_patches/susfs_defconfig >> arch/arm64/configs/${KERNEL_DEFCONFIG}
+
+    rm -rf susfs_tmp
+    echo "✅ SusFS integrado!"
 fi
 
 # Set Build Status
@@ -196,9 +249,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # Limpeza Segura (Sem o bug de I/O)
-echo "🧹 Limpando a sujeira e builds anteriores..."
-rm -rf out/
-mkdir -p out/
+echo "🧹 Usando builds anteriores..."
 
 # Set Defconfig
 echo "⚙️ Setting up defconfig..."
@@ -225,8 +276,10 @@ make O=out olddefconfig
 
 # Compile Kernel
 echo ""
-echo "🔨 Starting kernel compilation..."
+echo "🔨 Iniciando a compilação do kernel..."
 echo ""
+
+echo "" > .scmversion
 
 # Limitado a 2 núcleos para evitar travamento do HD/Swap
 make -j2 O=out \
@@ -277,7 +330,6 @@ echo ""
 
 # Clean up
 echo "🧹 Cleaning up..."
-rm -rf out/
 rm -rf $ANYKERNEL3_DIR/Image $ANYKERNEL3_DIR/dtbo.img $ANYKERNEL3_DIR/dtb
 
 echo "✅ All done!"
