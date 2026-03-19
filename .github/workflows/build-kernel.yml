@@ -1,0 +1,32 @@
+name: Build C137 Kernel
+
+on:
+  workflow_dispatch: # Isso cria um botão mágico "Run workflow" para você disparar quando quiser
+
+jobs:
+  build:
+    name: Compilando Kernel C137
+    runs-on: ubuntu-latest # Pega o servidor mais atualizado do GitHub
+
+    steps:
+    - name: Baixando o repositório do Builder
+      uses: actions/checkout@v4
+
+    - name: Preparando o Servidor (Instalando Dependências)
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y git ccache automake flex lzop bison gperf build-essential zip curl zlib1g-dev g++-multilib libxml2-utils bzip2 libbz2-dev libbz2-1.0 libghc-bzlib-dev squashfs-tools pngcrush schedtool dpkg-dev liblz4-tool make optipng maven libssl-dev pwgen libswitch-perl policycoreutils minicom libxml-sax-base-perl libxml-simple-perl bc libc6-dev-i386 lib32ncurses5-dev x11proto-core-dev libx11-dev libx11-dev:i386 lib32z1-dev libgl1-mesa-dev xsltproc unzip fontconfig python3
+
+    - name: Dando permissão ao script
+      run: chmod +x build.sh
+
+    - name: Iniciando a Compilação
+      run: ./build.sh
+      # Aqui o servidor do GitHub vai executar o seu script igualzinho você fazia no terminal
+
+    - name: Disponibilizando o ZIP para Download
+      uses: actions/upload-artifact@v4
+      with:
+        name: C137-Kernel-ZIP
+        path: AnyKernel3/*.zip
+        # Pega o ZIP que o script gerou na pasta AnyKernel3 e cria o botão de download
